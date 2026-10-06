@@ -57,11 +57,27 @@ data "azurerm_subnet" "aca" {
 # Private DNS zones
 ############################################
 locals {
-  dns_zones = {
-    file      = "privatelink.file.core.windows.net"
-    openai    = "privatelink.openai.azure.com"
-    cognitive = "privatelink.cognitiveservices.azure.com"
-  }
+  dns_zones = merge(
+    var.file_dns_zone_resource_group == null ? { file = "privatelink.file.core.windows.net" } : {},
+    {
+      openai    = "privatelink.openai.azure.com"
+      cognitive = "privatelink.cognitiveservices.azure.com"
+    }
+  )
+}
+
+# The VNet is already linked to a privatelink.file zone, so reuse it instead of creating a second one
+data "azurerm_private_dns_zone" "file_existing" {
+  count               = var.file_dns_zone_resource_group == null ? 0 : 1
+  name                = "privatelink.file.core.windows.net"
+  resource_group_name = var.file_dns_zone_resource_group
+}
+
+locals {
+  file_dns_zone_id = try(
+    data.azurerm_private_dns_zone.file_existing[0].id,
+    azurerm_private_dns_zone.zones["file"].id
+  )
 }
 
 resource "azurerm_private_dns_zone" "zones" {
@@ -135,6 +151,11 @@ resource "azurerm_storage_account" "files" {
   allow_nested_items_to_be_public = false
   shared_access_key_enabled       = true # required for Azure Files mount in Container Apps
   public_network_access_enabled   = false
+
+  network_rules {
+    default_action = "Deny"
+    bypass         = ["AzureServices"]
+  }
   tags                            = local.tags
 }
 
@@ -160,7 +181,7 @@ resource "azurerm_private_endpoint" "files" {
 
   private_dns_zone_group {
     name                 = "file-dns"
-    private_dns_zone_ids = [azurerm_private_dns_zone.zones["file"].id]
+    private_dns_zone_ids = [local.file_dns_zone_id]
   }
 }
 
@@ -170,7 +191,7 @@ resource "azurerm_private_endpoint" "files" {
 resource "azurerm_cognitive_account" "openai" {
   name                          = "${local.prefix}-openai-${local.suffix}"
   resource_group_name           = local.rg_name
-  location                      = local.location
+  location                      = var.openai_location
   kind                          = "OpenAI"
   sku_name                      = "S0"
   custom_subdomain_name         = "${local.prefix}-openai-${local.suffix}"
