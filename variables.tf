@@ -40,6 +40,18 @@ variable "aca_subnet_name" {
   type        = string
 }
 
+variable "openai_location" {
+  description = "Region for the Azure OpenAI account (Central India does not support S0)"
+  type        = string
+  default     = "eastus2"
+}
+
+variable "file_dns_zone_resource_group" {
+  description = "Resource group of the EXISTING privatelink.file.core.windows.net zone already linked to the VNet. null = create a new zone"
+  type        = string
+  default     = null
+}
+
 variable "internal_load_balancer_enabled" {
   description = "true = Container Apps environment reachable only from inside the VNet"
   type        = bool
