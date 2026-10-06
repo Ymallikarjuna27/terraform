@@ -6,7 +6,7 @@ project             = "inca-sd"
 existing_vnet_name           = "LZ-PREMI1208257-VASHIST_CIN_vNet"
 existing_vnet_resource_group = "RG_ITAAS"
 pe_subnet_name               = "Subnet-1"
-aca_subnet_name              = "Subnet-2"
+aca_subnet_name              = "Subnet-3"
 
 # After pushing your image to ACR, change these two and run terraform apply again:
 # fastapi_image = "<acr-name>.azurecr.io/inca-fastapi:v1"
